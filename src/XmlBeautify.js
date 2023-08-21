@@ -23,6 +23,7 @@
  *   <foo></foo> ==> <foo></foo>
  *
  */
+const NONE_SPECIFIED_TYPE = 0;
 const ELEMENT_NODE = 1;
 const ATTRIBUTE_NODE = 2;
 const TEXT_NODE = 3;
@@ -32,6 +33,20 @@ const COMMENT_NODE = 8;
 const DOCUMENT_NODE = 9;
 const DOCUMENT_TYPE_NODE = 10;
 const DOCUMENT_FRAGMENT_NODE = 11;
+
+const DEFAULT_INDENT = '  ';
+
+const START_TAG_PREFIX = '<';
+const START_TAG_SUFFIX = '>';
+const EMPTY_TAG_SUFFIX = ' />';
+const END_TAG_PREFIX = '</';
+const END_TAG_SUFFIX = '>';
+
+const CDATA_SECTION_PREFIX = '<![CDATA[';
+const CDATA_SECTION_SUFFIX = ']]>';
+const COMMENT_PREFIX = '<!--';
+const COMMENT_SUFFIX = '-->';
+
 export default class XmlBeautify {
   constructor(option) {
     const opt = option || {};
@@ -44,236 +59,187 @@ export default class XmlBeautify {
     }
   }
 
-  hasXmlDef(xmlText) {
+  beautify(xmlText, data = {}) {
+    const buildInfo = {
+      indentText: data.indent || DEFAULT_INDENT,
+      xmlText: '',
+      useSelfClosingElement: !!data.useSelfClosingElement,
+      indentLevel: 0,
+      textContentOnDifferentLine: !!data.textContentOnDifferentLine
+    }
+
+    const doc = this.parser.parseFromString(xmlText, 'text/xml');
+
+    if (XmlBeautify.#hasXmlDefinition(xmlText)) {
+      const encoding = XmlBeautify.#getEncoding(xmlText) || 'UTF-8';
+      const xmlHeader = '<?xml version="1.0" encoding="' + encoding + '"?>';
+      buildInfo.xmlText += xmlHeader + '\n';
+    }
+
+    const root = this.userExternalParser? XmlBeautify.#getChildren(doc, ELEMENT_NODE)[0] : doc.children[0];
+    XmlBeautify.#parseInternally(root, buildInfo, this.userExternalParser);
+
+    return buildInfo.xmlText;
+  };
+
+  static #hasXmlDefinition(xmlText) {
     return xmlText.indexOf('<?xml') >= 0;
   }
 
-  getEncoding(xmlText) {
-    const me = this;
-    if (!me.hasXmlDef(xmlText)) {
+  static #hasContent(element){
+    const regExp = /^[ \t\n\r]*$/;
+    return !regExp.test(element.textContent);
+  }
+
+  static #isIndentNode(nodeType){
+    return nodeType === ELEMENT_NODE
+    || XmlBeautify.#isContentNode(nodeType)
+  }
+
+  static #isContentNode(nodeType){
+    return nodeType === TEXT_NODE
+    || nodeType === CDATA_SECTION_NODE
+    || nodeType === COMMENT_NODE;
+
+    //TODO: PROCESSING_INSTRUCTION_NODE && DOCUMENT_TYPE_NODE
+  }
+
+  static #getEncoding(xmlText) {
+    try{
+      const encodingStartPosition = xmlText.toLowerCase().indexOf('encoding="') + 'encoding="'.length;
+      const encodingEndPosition = xmlText.indexOf('"?>');
+      return xmlText.substring(encodingStartPosition, encodingEndPosition);
+    } catch {
       return null;
     }
 
-    const encodingStartPos = xmlText.toLowerCase().indexOf('encoding="') + 'encoding="'.length;
-    const encodingEndPos = xmlText.indexOf('"?>');
-    const encoding = xmlText.substr(encodingStartPos, encodingEndPos - encodingStartPos);
-    return encoding;
   }
-
 
   /**
-   * Returns Array of ELEMENT_NODE-child
-   * @param element
-   * @returns {*[]}
+   * Returns Array of child that will be indented, such as text, element or comment
+   * @param element the parent element which children is going to be extracted
+   * @param type specify a type if you want only one type of children
+   * @returns {*[]} an array with children. If there is no children, the array will be empty
    * @private
    */
-  _children(element) {
-    const _ret = [];
-    const numOfChildNodes = element.childNodes.length;
-    for (let i = 0; i < numOfChildNodes; i++) {
-      if (element.childNodes[i].nodeType === ELEMENT_NODE) {
-        _ret.push(element.childNodes[i]);
+  static #getChildren(element, type = NONE_SPECIFIED_TYPE) {
+      const children = [];
+
+      if(element.childNodes) {
+        for (let i = 0; i < element.childNodes.length; i++) {
+          if (type === NONE_SPECIFIED_TYPE && XmlBeautify.#isIndentNode(element.childNodes[i].nodeType)) {
+            children.push(element.childNodes[i]);
+          } else if(type === element.childNodes[i].nodeType){
+            children.push(element.childNodes[i]);
+          }
+        }
       }
-    }
-    return _ret;
+      return children;
   }
 
-  beautify(xmlText, data) {
-    const me = this;
-
-    const doc = me.parser.parseFromString(xmlText, 'text/xml');
-
-    let indent = '  ';
-    const encoding = 'UTF-8';
-    let useSelfClosingElement = false;
-
-    if (data) {
-      if (data.indent) {
-        indent = data.indent;
-      }
-
-      if (data.useSelfClosingElement == true) {
-        useSelfClosingElement = data.useSelfClosingElement;
-      }
+  static #getIndent(buildInfo){
+    let indentText = '';
+    for (let idx = 0; idx < buildInfo.indentLevel; idx++) {
+      indentText += buildInfo.indentText;
     }
+    return indentText;
+  }
 
-    let xmlHeader = null;
-
-    if (me.hasXmlDef(xmlText)) {
-      const encoding = me.getEncoding(xmlText);
-      xmlHeader = '<?xml version="1.0" encoding="' + encoding + '"?>';
-    }
-    const buildInfo = {
-      indentText: indent,
-      xmlText: '',
-      useSelfClosingElement: useSelfClosingElement,
-      indentLevel: 0
-    }
-
-    if (me.userExternalParser) {
-      me._parseInternally(this._children(doc)[0], buildInfo);
-    } else {
-      me._parseInternally(doc.children[0], buildInfo);
-    }
-
-    let resultXml = '';
-
-    if (xmlHeader) {
-      resultXml += xmlHeader + '\n';
-    }
-    resultXml += buildInfo.xmlText;
-
-    return resultXml;
-  };
-
-  _parseInternally(element, buildInfo) {
-    const me = this;
-
+  static #parseInternally(element, buildInfo, userExternalParser = false, needsIndent = true) {
     let elementTextContent = element.textContent;
 
     const blankReplacedElementContent = elementTextContent.replace(/ /g, '').replace(/\r?\n/g, '').replace(/\n/g, '').replace(/\t/g, '');
 
-    if (blankReplacedElementContent.length == 0) {
+    if (blankReplacedElementContent.length === 0) {
       elementTextContent = '';
     }
 
-
-    let elementHasNoChildren;
-    if (me.userExternalParser) {
-      elementHasNoChildren = !(me._children(element).length > 0);
-    } else {
-      elementHasNoChildren = !(element.children.length > 0);
-    }
-
+    const elementHasNoChildren = userExternalParser? !(XmlBeautify.#getChildren(element).length > 0) : !(element.childNodes.length > 0);
     const elementHasValueOrChildren = (elementTextContent && elementTextContent.length > 0);
     const elementHasItsValue = elementHasNoChildren && elementHasValueOrChildren;
     const isEmptyElement = elementHasNoChildren && !elementHasValueOrChildren;
-
     const useSelfClosingElement = buildInfo.useSelfClosingElement;
-
-    const startTagPrefix = '<';
-    const startTagSuffix = '>';
-    const startTagSuffixEmpty = ' />';
-    const endTagPrefix = '</';
-    const endTagSuffix = '>';
 
     let valueOfElement = '';
 
-    if (elementHasItsValue) {
-      const { hasCDATAChild, content } = me._getFirstCDATAChild(element);
+    if(needsIndent)
+      buildInfo.xmlText += XmlBeautify.#getIndent(buildInfo);
 
-      if (hasCDATAChild) {
-        valueOfElement += content;
-      } else {
-        valueOfElement += elementTextContent;
-      }
-    }
+    buildInfo.xmlText += START_TAG_PREFIX + element.tagName
 
-    let indentText = '';
+    if(element.attributes)
+      XmlBeautify.#addAttributesOfElement(element, buildInfo);
 
-    for (let idx = 0; idx < buildInfo.indentLevel; idx++) {
-      indentText += buildInfo.indentText;
-    }
-    buildInfo.xmlText += indentText;
-    buildInfo.xmlText += startTagPrefix + element.tagName
-
-    //add attributes
-    for (let i = 0; i < element.attributes.length; i++) {
-      const attr = element.attributes[i];
-      buildInfo.xmlText += ' ' + attr.name + '=' + '"' + attr.textContent + '"';
-    }
-
-    if (isEmptyElement && useSelfClosingElement) {
-      buildInfo.xmlText += startTagSuffixEmpty;
-
-    } else {
-      buildInfo.xmlText += startTagSuffix;
-    }
+    buildInfo.xmlText += isEmptyElement && useSelfClosingElement? EMPTY_TAG_SUFFIX : START_TAG_SUFFIX;
 
     if (elementHasItsValue) {
       buildInfo.xmlText += valueOfElement;
-    } else {
-
-      if (isEmptyElement && !useSelfClosingElement) {
-      } else {
+    } else if (!isEmptyElement || useSelfClosingElement) {
         buildInfo.xmlText += '\n';
-      }
-
     }
 
     buildInfo.indentLevel++;
 
-    let lengOfChildren;
+    const childrenNodes = userExternalParser? XmlBeautify.#getChildren(element) : element.childNodes;
+    let closingNeedsIndent = true;
+    for (const child of childrenNodes) {
+      let nextSiblingNeedsIndent = closingNeedsIndent;
+      closingNeedsIndent = true;
 
-    if (me.userExternalParser) {
-      lengOfChildren = me._children(element).length;
-    } else {
-      lengOfChildren = element.children.length;
-    }
-
-    for (let i = 0; i < lengOfChildren; i++) {
-      let child;
-      if (me.userExternalParser) {
-        child = me._children(element)[i];
-      } else {
-        child = element.children[i];
+      if(child.nodeType === ELEMENT_NODE){
+        XmlBeautify.#parseInternally(child, buildInfo, userExternalParser, nextSiblingNeedsIndent);
+      } else if(XmlBeautify.#isContentNode(child.nodeType) && XmlBeautify.#hasContent(child)){
+          closingNeedsIndent = XmlBeautify.#addTextElementToBuild(child, buildInfo);
       }
-      me._parseInternally(child, buildInfo);
+
     }
     buildInfo.indentLevel--;
+    buildInfo.xmlText = buildInfo.xmlText.replace(/ *$/g, '');
 
-    if (isEmptyElement) {
-      if (useSelfClosingElement) {
+    if(!isEmptyElement && !(elementHasNoChildren && elementHasValueOrChildren) && closingNeedsIndent){
+        buildInfo.xmlText += XmlBeautify.#getIndent(buildInfo);
+    }
 
-      } else {
-        const endTag = endTagPrefix + element.tagName + endTagSuffix;
+    if ((isEmptyElement && !useSelfClosingElement) || !isEmptyElement) {
+        const endTag = END_TAG_PREFIX + element.tagName + END_TAG_SUFFIX;
         buildInfo.xmlText += endTag;
         buildInfo.xmlText += '\n';
-      }
-    } else {
-      const endTag = endTagPrefix + element.tagName + endTagSuffix;
-
-      if (!(elementHasNoChildren && elementHasValueOrChildren)) {
-        buildInfo.xmlText += indentText;
-      }
-      buildInfo.xmlText += endTag;
-      buildInfo.xmlText += '\n';
     }
   };
 
-
-  /**
-   * Return the CDATA section in the first child element of element.
-   * If not exists, returns  { hasCDATAChild:false }
-   * @param element
-   * @returns {*}
-   * @private
-   */
-  _getFirstCDATAChild(element) {
-    const numOfChildNodes = element.childNodes.length;// numOfChildNodes should be 1
-    let textContent = ``;
-    let hasCDATA = false;
-    for (let i = 0; i < numOfChildNodes; i++) {
-      if (element.childNodes[i].nodeType === TEXT_NODE) {
-
-        const data = element.childNodes[i].data;
-        const blankReplacedElementContent = data.replace(/ /g, '').replace(/\r?\n/g, '').replace(/\n/g, '').replace(/\t/g, '');
-
-        if (blankReplacedElementContent.length > 0) {
-          textContent += element.childNodes[i].data;
-        }
-      } else if (element.childNodes[i].nodeType === CDATA_SECTION_NODE) {
-        const data = element.childNodes[i].data;
-        textContent += '<![CDATA[';
-        textContent += data;
-        textContent += ']]>';
-        hasCDATA = true;
-      }
+  static #addAttributesOfElement(element, buildInfo){
+    for(let idx = 0; idx<element.attributes.length; idx++){
+      const attribute = element.attributes[idx];
+      buildInfo.xmlText += ' ' + attribute.name + '=' + '"' + attribute.textContent + '"';
     }
-    if (hasCDATA) {
-      return { hasCDATAChild: true, content: textContent };
-    }
-    return { hasCDATAChild: false };
   }
 
+  static #addTextElementToBuild(element, buildInfo){
+    const text = element.textContent.replace(/[\n\t\r]/g, '');
+
+    let addingContent;
+    if(element.nodeType === CDATA_SECTION_NODE) {
+      addingContent = CDATA_SECTION_PREFIX + element.textContent + CDATA_SECTION_SUFFIX;
+    } else if (element.nodeType === COMMENT_NODE) {
+      addingContent = COMMENT_PREFIX + element.textContent + COMMENT_SUFFIX;
+    } else{
+      addingContent = text;
+    }
+
+    addingContent = addingContent.trim();
+
+    if(buildInfo.textContentOnDifferentLine){
+      addingContent = XmlBeautify.#getIndent(buildInfo) + addingContent + "\n";
+    } else {
+      addingContent += " ";
+      if (buildInfo.xmlText.endsWith("\n")) {
+        const idx = buildInfo.xmlText.lastIndexOf("\n");
+        buildInfo.xmlText = buildInfo.xmlText.substring(0, idx);
+
+      }
+    }
+    buildInfo.xmlText += addingContent;
+
+    return buildInfo.textContentOnDifferentLine;
+  }
 }
