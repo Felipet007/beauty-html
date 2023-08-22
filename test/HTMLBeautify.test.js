@@ -29,7 +29,8 @@ describe('HTMLBeautify', () => {
   <head>
     <title>Original Title</title>
   </head>
-  <body><!-- Esto es un comentario --> MyText jijiji <element message="Greeting" title="Chapter1">
+  <body>
+    <!-- Esto es un comentario -->MyText jijiji <element message="Greeting" title="Chapter1">
       <element message="We say good morning in the morning."></element>
       <element message="We say hello at noon."></element>
       <element message="We say good evening at night."></element>
@@ -82,11 +83,13 @@ describe('HTMLBeautify', () => {
         })
 
         test('default with content on separate lines', () => {
-            const srcXmlText = `<example version="2.0">
-  <head>
-    <title>Original Title</title>
+            const srcXmlText = `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+                "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<body version="2.0">
+  <head><?target instruction?><title>Original Title</title>
   </head>
   <body>
+<!-- Esto es un comentario -->
   MyText jijiji
     <element message="Greeting" title="Chapter1">
       <element message="We say good morning in the morning."></element><element message="We say hello at noon."/>
@@ -97,16 +100,20 @@ describe('HTMLBeautify', () => {
       <element></element>
     </element>
   </body>
-</example>`;
+</body>`;
             const options = {"textContentOnDifferentLine": true}
             const beautifiedXmlText = new XmlBeautify().beautify(srcXmlText, options);
-            expect(beautifiedXmlText).toBe(`<example version="2.0">
+            expect(beautifiedXmlText).toBe(`<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<body version="2.0">
   <head>
+    <?target instruction?>
     <title>
       Original Title
     </title>
   </head>
   <body>
+    <!-- Esto es un comentario -->
     MyText jijiji
     <element message="Greeting" title="Chapter1">
       <element message="We say good morning in the morning."></element>
@@ -120,13 +127,14 @@ describe('HTMLBeautify', () => {
       <element></element>
     </element>
   </body>
-</example>
+</body>
 `);
         });
 
         test('default with external DOMParser and content on separate lines', () => {
             const srcXmlText = `<?xml version="1.0" encoding="utf-8"?><example version="2.0">
-  <head>
+  <head><?target instruction?><?xml version="1.0"                type="selfEnclosing"
+                                                           encoding="UTF-8"?>
     <title>Original Title</title>
   </head>
   <body>
@@ -146,6 +154,9 @@ describe('HTMLBeautify', () => {
             expect(beautifiedXmlText).toBe(`<?xml version="1.0" encoding="utf-8"?>
 <example version="2.0">
   <head>
+    <?target instruction?>
+    <?xml version="1.0" type="selfEnclosing"
+      encoding="UTF-8"?>
     <title>
       Original Title
     </title>
