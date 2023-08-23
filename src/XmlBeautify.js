@@ -48,6 +48,14 @@ const COMMENT_PREFIX = '<!--';
 const COMMENT_SUFFIX = '-->';
 const PROCESSING_INSTRUCTION_PREFIX = '<?';
 const PROCESSING_INSTRUCTION_SUFFIX = '?>';
+const DOCTYPE_PREFIX = '<!DOCTYPE';
+const DOCTYPE_PUBLIC_TAG = 'PUBLIC';
+const DOCTYPE_SUFFIX = END_TAG_SUFFIX;
+
+const WHITE_SPACE = ' ';
+const LINE_BREAK = '\n';
+const DOUBLE_QUOTE = '"';
+const EMPTY = '';
 
 export default class XmlBeautify {
   constructor(option) {
@@ -64,7 +72,7 @@ export default class XmlBeautify {
   beautify(xmlText, data = {}) {
     const buildInfo = {
       indentText: data.indent || DEFAULT_INDENT,
-      xmlText: '',
+      xmlText: EMPTY,
       useSelfClosingElement: !!data.useSelfClosingElement,
       indentLevel: 0,
       textContentOnDifferentLine: !!data.textContentOnDifferentLine
@@ -72,30 +80,20 @@ export default class XmlBeautify {
 
     const doc = this.parser.parseFromString(xmlText, 'text/xml');
 
-    if(!this.userExternalParser){
-      if (XmlBeautify.#hasXmlDefinition(xmlText)) {
-        XmlBeautify.#addXmlDefinition(xmlText, buildInfo);
-      }
-
-      if(XmlBeautify.#hasDoctypeDefinition(xmlText)){
-        XmlBeautify.#addDoctypeDefinition(xmlText, buildInfo);
-      }
+    if (!this.userExternalParser && XmlBeautify.#hasXmlDefinition(xmlText)) {
+      XmlBeautify.#addXmlDefinition(xmlText, buildInfo);
     }
 
     const roots = this.userExternalParser? XmlBeautify.#getChildren(doc) : doc.childNodes;
     for(const root of roots){
       XmlBeautify.#parse(root, buildInfo, this.userExternalParser);
     }
-    console.log(buildInfo.xmlText);
+
     return buildInfo.xmlText;
   };
 
   static #hasXmlDefinition(xmlText) {
     return xmlText.indexOf('<?xml') >= 0;
-  }
-
-  static #hasDoctypeDefinition(xmlText){
-    return xmlText.indexOf('<!DOCTYPE') >= 0
   }
 
   static #hasContent(element){
@@ -156,7 +154,7 @@ export default class XmlBeautify {
   static #getIndent(buildInfo, plusIndentLevel=0){
     const indentLevel = buildInfo.indentLevel + plusIndentLevel;
 
-    let indentText = '';
+    let indentText = EMPTY;
     for (let idx = 0; idx < indentLevel; idx++) {
       indentText += buildInfo.indentText;
     }
@@ -175,12 +173,12 @@ export default class XmlBeautify {
   }
 
   static #addNodeElementToBuild(element, buildInfo, userExternalParser, needsIndent) {
-    let elementTextContent = element.textContent || '';
+    let elementTextContent = element.textContent || EMPTY;
 
-    const blankReplacedElementContent = elementTextContent.replace(/[ \r\n\t]/g, '');
+    const blankReplacedElementContent = elementTextContent.replace(/[ \r\n\t]/g, EMPTY);
 
     if (blankReplacedElementContent.length === 0) {
-      elementTextContent = '';
+      elementTextContent = EMPTY;
     }
 
     const elementHasNoChildren = userExternalParser? !(XmlBeautify.#getChildren(element).length > 0) : !(element.childNodes.length > 0);
@@ -189,7 +187,7 @@ export default class XmlBeautify {
     const isEmptyElement = elementHasNoChildren && !elementHasValueOrChildren;
     const useSelfClosingElement = buildInfo.useSelfClosingElement;
 
-    let valueOfElement = '';
+    let valueOfElement = EMPTY;
 
     if(needsIndent)
       buildInfo.xmlText += XmlBeautify.#getIndent(buildInfo);
@@ -204,7 +202,7 @@ export default class XmlBeautify {
     if (elementHasItsValue) {
       buildInfo.xmlText += valueOfElement;
     } else if (!isEmptyElement || useSelfClosingElement) {
-        buildInfo.xmlText += '\n';
+        buildInfo.xmlText += LINE_BREAK;
     }
 
     buildInfo.indentLevel++;
@@ -215,7 +213,7 @@ export default class XmlBeautify {
       closingNeedsIndent = XmlBeautify.#parse(child, buildInfo, userExternalParser, closingNeedsIndent);
     }
     buildInfo.indentLevel--;
-    buildInfo.xmlText = buildInfo.xmlText.replace(/ *$/g, '');
+    buildInfo.xmlText = buildInfo.xmlText.replace(/ *$/g, EMPTY);
 
     if(!isEmptyElement && !(elementHasNoChildren && elementHasValueOrChildren) && closingNeedsIndent){
         buildInfo.xmlText += XmlBeautify.#getIndent(buildInfo);
@@ -224,19 +222,19 @@ export default class XmlBeautify {
     if ((isEmptyElement && !useSelfClosingElement) || !isEmptyElement) {
         const endTag = END_TAG_PREFIX + element.tagName + END_TAG_SUFFIX;
         buildInfo.xmlText += endTag;
-        buildInfo.xmlText += '\n';
+        buildInfo.xmlText += LINE_BREAK;
     }
   };
 
   static #addAttributesOfElement(element, buildInfo){
     for(let idx = 0; idx<element.attributes.length; idx++){
       const attribute = element.attributes[idx];
-      buildInfo.xmlText += ' ' + attribute.name + '=' + '"' + attribute.textContent + '"';
+      buildInfo.xmlText += WHITE_SPACE + attribute.name + '=' + DOUBLE_QUOTE + attribute.textContent + DOUBLE_QUOTE;
     }
   }
 
   static #addTextElementToBuild(element, buildInfo){
-    const text = element.textContent.replace(/[\n\t\r]/g, '');
+    const text = element.textContent.replace(/[\n\t\r]/g, EMPTY);
 
     let addingContent;
     if(element.nodeType === CDATA_SECTION_NODE) {
@@ -248,11 +246,11 @@ export default class XmlBeautify {
     addingContent = addingContent.trim();
 
     if(buildInfo.textContentOnDifferentLine){
-      addingContent = XmlBeautify.#getIndent(buildInfo) + addingContent + "\n";
+      addingContent = XmlBeautify.#getIndent(buildInfo) + addingContent + LINE_BREAK;
     } else {
-      addingContent += " ";
-      if (buildInfo.xmlText.endsWith("\n")) {
-        const idx = buildInfo.xmlText.lastIndexOf("\n");
+      addingContent += WHITE_SPACE;
+      if (buildInfo.xmlText.endsWith(LINE_BREAK)) {
+        const idx = buildInfo.xmlText.lastIndexOf(LINE_BREAK);
         buildInfo.xmlText = buildInfo.xmlText.substring(0, idx);
 
       }
@@ -262,7 +260,6 @@ export default class XmlBeautify {
     return buildInfo.textContentOnDifferentLine;
   }
 
-  //TODO: IF NO EXTERNAL, INSTRUCTION DON'T HAVE TAG
   static #addDescriptorElementToBuild(element, buildInfo){
     let addingContent;
     if (element.nodeType === COMMENT_NODE) {
@@ -270,12 +267,17 @@ export default class XmlBeautify {
     } else if (element.nodeType === PROCESSING_INSTRUCTION_NODE){
       let elementValue = element.data;
       elementValue = XmlBeautify.#clean(elementValue, buildInfo);
-      addingContent = PROCESSING_INSTRUCTION_PREFIX + element.tagName + " " + elementValue + PROCESSING_INSTRUCTION_SUFFIX;
-    } else{ //DOCUMENT DEFINITION
-      return;
+      addingContent = PROCESSING_INSTRUCTION_PREFIX + element.target + WHITE_SPACE + elementValue + PROCESSING_INSTRUCTION_SUFFIX;
+    } else if (element.nodeType === DOCUMENT_TYPE_NODE){ //DOCUMENT DEFINITION
+      addingContent = DOCTYPE_PREFIX + WHITE_SPACE + element.name;
+      addingContent += !element.publicId? EMPTY : WHITE_SPACE + DOCTYPE_PUBLIC_TAG + WHITE_SPACE
+                                              + DOUBLE_QUOTE + element.publicId + DOUBLE_QUOTE
+                                              + LINE_BREAK + XmlBeautify.#getIndent(buildInfo, 1)
+                                              + DOUBLE_QUOTE + element.systemId + DOUBLE_QUOTE;
+      addingContent += DOCTYPE_SUFFIX;
     }
 
-    addingContent = XmlBeautify.#getIndent(buildInfo) + addingContent + "\n";
+    addingContent = XmlBeautify.#getIndent(buildInfo) + addingContent + LINE_BREAK;
     buildInfo.xmlText += addingContent;
 
     return buildInfo.textContentOnDifferentLine;
@@ -284,13 +286,7 @@ export default class XmlBeautify {
   static #addXmlDefinition(xmlText, buildInfo){
     const encoding = XmlBeautify.#getEncoding(xmlText) || 'UTF-8';
     const xmlHeader = '<?xml version="1.0" encoding="' + encoding + '"?>';
-    buildInfo.xmlText += xmlHeader + '\n';
-  }
-
-  static #addDoctypeDefinition(xmlText, buildInfo){
-    const docTypeRegex = /(<!DOCTYPE)([^>])*(>)/
-    let headerDoctype = docTypeRegex.exec(docTypeRegex);
-    return XmlBeautify.#clean(headerDoctype[0], buildInfo);
+    buildInfo.xmlText += xmlHeader + LINE_BREAK;
   }
 
   static #clean(elementValue, buildInfo){
@@ -300,8 +296,8 @@ export default class XmlBeautify {
 
     const indentForLineBreaks = XmlBeautify.#getIndent(buildInfo, 1);
 
-    return elementValue.replace(tabSpaceReplaceRegex, '')
-        .replace(whiteSpaceReplaceRegex, ' ')
-        .replace(lineBreakReplaceRegex, "\n" + indentForLineBreaks);
+    return elementValue.replace(tabSpaceReplaceRegex, EMPTY)
+        .replace(whiteSpaceReplaceRegex, WHITE_SPACE)
+        .replace(lineBreakReplaceRegex, LINE_BREAK + indentForLineBreaks);
   }
 }
