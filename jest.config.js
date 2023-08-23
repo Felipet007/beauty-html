@@ -12,7 +12,7 @@ module.exports = {
   coveragePathIgnorePatterns: [
   ],
   coverageDirectory: "./coverage/",
-  collectCoverage: false,
+  collectCoverage: true,
   // testEnvironmentOptions: {
   //   "runScripts": "dangerously",
   //   "resources": "usable",

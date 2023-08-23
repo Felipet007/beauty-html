@@ -1,4 +1,4 @@
-import XmlBeautify from '../src/XmlBeautify'
+import BeautyHtml from '../src/BeautyHtml'
 
 const { DOMParser } = require('@xmldom/xmldom');
 
@@ -23,7 +23,7 @@ describe('HTMLBeautify', () => {
   </body>
 </example>`;
 
-            const beautifiedXmlText = new XmlBeautify().beautify(srcXmlText);
+            const beautifiedXmlText = new BeautyHtml().beautify(srcXmlText);
             expect(beautifiedXmlText).toBe(`<?xml version="1.0" encoding="utf-8"?>
 <example version="2.0">
   <head>
@@ -62,7 +62,7 @@ describe('HTMLBeautify', () => {
   </body>
 </example>`;
 
-            const beautifiedXmlText = new XmlBeautify({ parser: DOMParser }).beautify(srcXmlText);
+            const beautifiedXmlText = new BeautyHtml({ parser: DOMParser }).beautify(srcXmlText);
             expect(beautifiedXmlText).toBe(`<?xml version="1.0" encoding="utf-8"?>
 <example version="2.0">
   <head>
@@ -102,7 +102,7 @@ describe('HTMLBeautify', () => {
   </body>
 </body>`;
             const options = {"textContentOnDifferentLine": true}
-            const beautifiedXmlText = new XmlBeautify().beautify(srcXmlText, options);
+            const beautifiedXmlText = new BeautyHtml().beautify(srcXmlText, options);
             expect(beautifiedXmlText).toBe(`<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <body version="2.0">
@@ -150,7 +150,7 @@ describe('HTMLBeautify', () => {
   </body>
 </example>`;
             const options = {"textContentOnDifferentLine": true}
-            const beautifiedXmlText = new XmlBeautify({ parser: DOMParser }).beautify(srcXmlText, options);
+            const beautifiedXmlText = new BeautyHtml({ parser: DOMParser }).beautify(srcXmlText, options);
             expect(beautifiedXmlText).toBe(`<?xml version="1.0" encoding="utf-8"?>
 <example version="2.0">
   <head>
