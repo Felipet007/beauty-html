@@ -46,6 +46,16 @@ const CDATA_SECTION_PREFIX = '<![CDATA[';
 const CDATA_SECTION_SUFFIX = ']]>';
 const COMMENT_PREFIX = '<!--';
 const COMMENT_SUFFIX = '-->';
+const PROCESSING_INSTRUCTION_PREFIX = '<?';
+const PROCESSING_INSTRUCTION_SUFFIX = '?>';
+const DOCTYPE_PREFIX = '<!DOCTYPE';
+const DOCTYPE_PUBLIC_TAG = 'PUBLIC';
+const DOCTYPE_SUFFIX = END_TAG_SUFFIX;
+
+const WHITE_SPACE = ' ';
+const LINE_BREAK = '\n';
+const DOUBLE_QUOTE = '"';
+const EMPTY = '';
 
 export default class XmlBeautify {
   constructor(option) {
@@ -62,7 +72,7 @@ export default class XmlBeautify {
   beautify(xmlText, data = {}) {
     const buildInfo = {
       indentText: data.indent || DEFAULT_INDENT,
-      xmlText: '',
+      xmlText: EMPTY,
       useSelfClosingElement: !!data.useSelfClosingElement,
       indentLevel: 0,
       textContentOnDifferentLine: !!data.textContentOnDifferentLine
@@ -70,14 +80,14 @@ export default class XmlBeautify {
 
     const doc = this.parser.parseFromString(xmlText, 'text/xml');
 
-    if (XmlBeautify.#hasXmlDefinition(xmlText)) {
-      const encoding = XmlBeautify.#getEncoding(xmlText) || 'UTF-8';
-      const xmlHeader = '<?xml version="1.0" encoding="' + encoding + '"?>';
-      buildInfo.xmlText += xmlHeader + '\n';
+    if (!this.userExternalParser && XmlBeautify.#hasXmlDefinition(xmlText)) {
+      XmlBeautify.#addXmlDefinition(xmlText, buildInfo);
     }
 
-    const root = this.userExternalParser? XmlBeautify.#getChildren(doc, ELEMENT_NODE)[0] : doc.children[0];
-    XmlBeautify.#parseInternally(root, buildInfo, this.userExternalParser);
+    const roots = this.userExternalParser? XmlBeautify.#getChildren(doc) : doc.childNodes;
+    for(const root of roots){
+      XmlBeautify.#parse(root, buildInfo, this.userExternalParser);
+    }
 
     return buildInfo.xmlText;
   };
@@ -94,14 +104,18 @@ export default class XmlBeautify {
   static #isIndentNode(nodeType){
     return nodeType === ELEMENT_NODE
     || XmlBeautify.#isContentNode(nodeType)
+    || XmlBeautify.#isDescriptorNode(nodeType);
   }
 
   static #isContentNode(nodeType){
     return nodeType === TEXT_NODE
-    || nodeType === CDATA_SECTION_NODE
-    || nodeType === COMMENT_NODE;
+    || nodeType === CDATA_SECTION_NODE;
+  }
 
-    //TODO: PROCESSING_INSTRUCTION_NODE && DOCUMENT_TYPE_NODE
+  static #isDescriptorNode(nodeType){
+    return nodeType === COMMENT_NODE
+        || nodeType === PROCESSING_INSTRUCTION_NODE
+        || nodeType === DOCUMENT_TYPE_NODE;
   }
 
   static #getEncoding(xmlText) {
@@ -137,21 +151,34 @@ export default class XmlBeautify {
       return children;
   }
 
-  static #getIndent(buildInfo){
-    let indentText = '';
-    for (let idx = 0; idx < buildInfo.indentLevel; idx++) {
+  static #getIndent(buildInfo, plusIndentLevel=0){
+    const indentLevel = buildInfo.indentLevel + plusIndentLevel;
+
+    let indentText = EMPTY;
+    for (let idx = 0; idx < indentLevel; idx++) {
       indentText += buildInfo.indentText;
     }
     return indentText;
   }
 
-  static #parseInternally(element, buildInfo, userExternalParser = false, needsIndent = true) {
-    let elementTextContent = element.textContent;
+  static #parse(element, buildInfo, userExternalParser, nextSiblingNeedsIndent = true){
+    if(element.nodeType === ELEMENT_NODE) {
+      XmlBeautify.#addNodeElementToBuild(element, buildInfo, userExternalParser, nextSiblingNeedsIndent);
+    } else if (XmlBeautify.#isDescriptorNode(element.nodeType)){
+      XmlBeautify.#addDescriptorElementToBuild(element, buildInfo);
+    } else if(XmlBeautify.#isContentNode(element.nodeType) && XmlBeautify.#hasContent(element)){
+      return XmlBeautify.#addTextElementToBuild(element, buildInfo);
+    }
+    return true;
+  }
 
-    const blankReplacedElementContent = elementTextContent.replace(/ /g, '').replace(/\r?\n/g, '').replace(/\n/g, '').replace(/\t/g, '');
+  static #addNodeElementToBuild(element, buildInfo, userExternalParser, needsIndent) {
+    let elementTextContent = element.textContent || EMPTY;
+
+    const blankReplacedElementContent = elementTextContent.replace(/[ \r\n\t]/g, EMPTY);
 
     if (blankReplacedElementContent.length === 0) {
-      elementTextContent = '';
+      elementTextContent = EMPTY;
     }
 
     const elementHasNoChildren = userExternalParser? !(XmlBeautify.#getChildren(element).length > 0) : !(element.childNodes.length > 0);
@@ -160,7 +187,7 @@ export default class XmlBeautify {
     const isEmptyElement = elementHasNoChildren && !elementHasValueOrChildren;
     const useSelfClosingElement = buildInfo.useSelfClosingElement;
 
-    let valueOfElement = '';
+    let valueOfElement = EMPTY;
 
     if(needsIndent)
       buildInfo.xmlText += XmlBeautify.#getIndent(buildInfo);
@@ -175,7 +202,7 @@ export default class XmlBeautify {
     if (elementHasItsValue) {
       buildInfo.xmlText += valueOfElement;
     } else if (!isEmptyElement || useSelfClosingElement) {
-        buildInfo.xmlText += '\n';
+        buildInfo.xmlText += LINE_BREAK;
     }
 
     buildInfo.indentLevel++;
@@ -183,18 +210,10 @@ export default class XmlBeautify {
     const childrenNodes = userExternalParser? XmlBeautify.#getChildren(element) : element.childNodes;
     let closingNeedsIndent = true;
     for (const child of childrenNodes) {
-      let nextSiblingNeedsIndent = closingNeedsIndent;
-      closingNeedsIndent = true;
-
-      if(child.nodeType === ELEMENT_NODE){
-        XmlBeautify.#parseInternally(child, buildInfo, userExternalParser, nextSiblingNeedsIndent);
-      } else if(XmlBeautify.#isContentNode(child.nodeType) && XmlBeautify.#hasContent(child)){
-          closingNeedsIndent = XmlBeautify.#addTextElementToBuild(child, buildInfo);
-      }
-
+      closingNeedsIndent = XmlBeautify.#parse(child, buildInfo, userExternalParser, closingNeedsIndent);
     }
     buildInfo.indentLevel--;
-    buildInfo.xmlText = buildInfo.xmlText.replace(/ *$/g, '');
+    buildInfo.xmlText = buildInfo.xmlText.replace(/ *$/g, EMPTY);
 
     if(!isEmptyElement && !(elementHasNoChildren && elementHasValueOrChildren) && closingNeedsIndent){
         buildInfo.xmlText += XmlBeautify.#getIndent(buildInfo);
@@ -203,37 +222,35 @@ export default class XmlBeautify {
     if ((isEmptyElement && !useSelfClosingElement) || !isEmptyElement) {
         const endTag = END_TAG_PREFIX + element.tagName + END_TAG_SUFFIX;
         buildInfo.xmlText += endTag;
-        buildInfo.xmlText += '\n';
+        buildInfo.xmlText += LINE_BREAK;
     }
   };
 
   static #addAttributesOfElement(element, buildInfo){
     for(let idx = 0; idx<element.attributes.length; idx++){
       const attribute = element.attributes[idx];
-      buildInfo.xmlText += ' ' + attribute.name + '=' + '"' + attribute.textContent + '"';
+      buildInfo.xmlText += WHITE_SPACE + attribute.name + '=' + DOUBLE_QUOTE + attribute.textContent + DOUBLE_QUOTE;
     }
   }
 
   static #addTextElementToBuild(element, buildInfo){
-    const text = element.textContent.replace(/[\n\t\r]/g, '');
+    const text = element.textContent.replace(/[\n\t\r]/g, EMPTY);
 
     let addingContent;
     if(element.nodeType === CDATA_SECTION_NODE) {
       addingContent = CDATA_SECTION_PREFIX + element.textContent + CDATA_SECTION_SUFFIX;
-    } else if (element.nodeType === COMMENT_NODE) {
-      addingContent = COMMENT_PREFIX + element.textContent + COMMENT_SUFFIX;
-    } else{
+    } else {
       addingContent = text;
     }
 
     addingContent = addingContent.trim();
 
     if(buildInfo.textContentOnDifferentLine){
-      addingContent = XmlBeautify.#getIndent(buildInfo) + addingContent + "\n";
+      addingContent = XmlBeautify.#getIndent(buildInfo) + addingContent + LINE_BREAK;
     } else {
-      addingContent += " ";
-      if (buildInfo.xmlText.endsWith("\n")) {
-        const idx = buildInfo.xmlText.lastIndexOf("\n");
+      addingContent += WHITE_SPACE;
+      if (buildInfo.xmlText.endsWith(LINE_BREAK)) {
+        const idx = buildInfo.xmlText.lastIndexOf(LINE_BREAK);
         buildInfo.xmlText = buildInfo.xmlText.substring(0, idx);
 
       }
@@ -241,5 +258,46 @@ export default class XmlBeautify {
     buildInfo.xmlText += addingContent;
 
     return buildInfo.textContentOnDifferentLine;
+  }
+
+  static #addDescriptorElementToBuild(element, buildInfo){
+    let addingContent;
+    if (element.nodeType === COMMENT_NODE) {
+      addingContent = COMMENT_PREFIX + element.textContent + COMMENT_SUFFIX;
+    } else if (element.nodeType === PROCESSING_INSTRUCTION_NODE){
+      let elementValue = element.data;
+      elementValue = XmlBeautify.#clean(elementValue, buildInfo);
+      addingContent = PROCESSING_INSTRUCTION_PREFIX + element.target + WHITE_SPACE + elementValue + PROCESSING_INSTRUCTION_SUFFIX;
+    } else if (element.nodeType === DOCUMENT_TYPE_NODE){ //DOCUMENT DEFINITION
+      addingContent = DOCTYPE_PREFIX + WHITE_SPACE + element.name;
+      addingContent += !element.publicId? EMPTY : WHITE_SPACE + DOCTYPE_PUBLIC_TAG + WHITE_SPACE
+                                              + DOUBLE_QUOTE + element.publicId + DOUBLE_QUOTE
+                                              + LINE_BREAK + XmlBeautify.#getIndent(buildInfo, 1)
+                                              + DOUBLE_QUOTE + element.systemId + DOUBLE_QUOTE;
+      addingContent += DOCTYPE_SUFFIX;
+    }
+
+    addingContent = XmlBeautify.#getIndent(buildInfo) + addingContent + LINE_BREAK;
+    buildInfo.xmlText += addingContent;
+
+    return buildInfo.textContentOnDifferentLine;
+  }
+
+  static #addXmlDefinition(xmlText, buildInfo){
+    const encoding = XmlBeautify.#getEncoding(xmlText) || 'UTF-8';
+    const xmlHeader = '<?xml version="1.0" encoding="' + encoding + '"?>';
+    buildInfo.xmlText += xmlHeader + LINE_BREAK;
+  }
+
+  static #clean(elementValue, buildInfo){
+    const whiteSpaceReplaceRegex = / +/g;
+    const tabSpaceReplaceRegex = /\t+/g;
+    const lineBreakReplaceRegex = /[\n\r]+ */g;
+
+    const indentForLineBreaks = XmlBeautify.#getIndent(buildInfo, 1);
+
+    return elementValue.replace(tabSpaceReplaceRegex, EMPTY)
+        .replace(whiteSpaceReplaceRegex, WHITE_SPACE)
+        .replace(lineBreakReplaceRegex, LINE_BREAK + indentForLineBreaks);
   }
 }
