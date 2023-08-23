@@ -4,7 +4,7 @@
 [comment]: <> ([![CircleCI]&#40;https://circleci.com/gh/riversun/xml-beautify/tree/master.svg?style=shield&#41;]&#40;https://circleci.com/gh/riversun/xml-beautify/tree/master&#41;)
 [![codecov](https://codecov.io/gh/riversun/xml-beautify/branch/master/graph/badge.svg?token=5ODIRDVDLF)](https://codecov.io/gh/riversun/xml-beautify)
 
-beauty-html - pretty-print text in HTML and XML formats.
+beauty-html - pretty-print text in HTML and XML formats. H
 
 It is licensed under [MIT license](https://opensource.org/licenses/MIT).
 
