@@ -1,20 +1,22 @@
-# xml-beautify
-[![npm version](https://badge.fury.io/js/xml-beautify.svg)](https://badge.fury.io/js/xml-beautify)
+# beauty-html 
+[![npm version](https://badge.fury.io/js/beauty-html.svg)](https://badge.fury.io/js/beauty-html)
 
 [comment]: <> ([![CircleCI]&#40;https://circleci.com/gh/riversun/xml-beautify/tree/master.svg?style=shield&#41;]&#40;https://circleci.com/gh/riversun/xml-beautify/tree/master&#41;)
-[![codecov](https://codecov.io/gh/riversun/xml-beautify/branch/master/graph/badge.svg?token=5ODIRDVDLF)](https://codecov.io/gh/riversun/xml-beautify)
-
-xml-beautify - pretty-print text in XML formats.
+[![codecov](https://codecov.io/gh/Felipet007/xml-beautify/graph/badge.svg)](https://codecov.io/gh/Felipet007/xml-beautify)
+beauty-html - pretty-print text in HTML and XML formats.
 
 It is licensed under [MIT license](https://opensource.org/licenses/MIT).
+
+This is an upgraded version of xml beautify of Tom Misawa/riversun (https://github.com/riversun/xml-beautify.git)
 
 # How to use?
 
 ```javascript
-var beautifiedXmlText = new XmlBeautify().beautify(srcXmlText, 
+var beautifiedHTMLText = new BeautyHtml().beautify(srcHtmlText,
     {
         indent: "  ",  //indent pattern like white spaces
-        useSelfClosingElement: true //true:use self-closing element when empty element.
+        useSelfClosingElement: true, //true:use self-closing element when empty element.
+        textContentOnDifferentLine: false // false: will write all the text together with its tags and siblings. true: will make a different line for each text fragment
     });
 
 ```
@@ -70,13 +72,13 @@ var beautifiedXmlText = new XmlBeautify().beautify(srcXmlText,
 ## install via npm
 
 ```shell
-npm install xml-beautify
+npm install beauty-html
 ```
 
 ## use from CDN
 
 ```
-<script src="https://cdn.jsdelivr.net/npm/xml-beautify@1.2.3/dist/XmlBeautify.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xml-beautify@1.2.3/dist/BeautyHtml.js"></script>
 ```
 
 # Demo
@@ -88,7 +90,7 @@ https://riversun.github.io/xml-beautify/index.html
 **clone this project and type**
 
 ```shell
-git clone https://github.com/riversun/xml-beautify.git
+git clone https://github.com/Felipet007/xml-beautify.git
 npm start
 ```
 
@@ -98,9 +100,9 @@ npm start
 <!DOCTYPE html>
 <html lang="en">
 <body>
-<script src="https://cdn.jsdelivr.net/npm/xml-beautify@1.2.3/dist/XmlBeautify.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xml-beautify@1.2.3/dist/BeautyHtml.js"></script>
 <script>
-  const srcXmlText = `<?xml version="1.0" encoding="utf-8"?><example version="2.0">
+    const srcXmlText = `<?xml version="1.0" encoding="utf-8"?><example version="2.0">
   <head>
     <title>Original Title</title>
   </head>
@@ -116,8 +118,8 @@ npm start
   </body>
 </example>`;
 
-  const beautifiedXmlText = new XmlBeautify().beautify(srcXmlText);
-  console.log(beautifiedXmlText);
+    const beautifiedXmlText = new BeautyHtml().beautify(srcXmlText);
+    console.log(beautifiedXmlText);
 
 
 </script>
@@ -128,7 +130,7 @@ npm start
 
 # Run on Node.js
 
-To run XmlBeautify on node.js, need to install an external DOMParser like as follows.
+To run BeautyHtml on node.js, need to install an external DOMParser like as follows.
 
 ```
 npm install xmldom 
@@ -137,13 +139,13 @@ npm install xmldom
 And specify it as follows,
 
 ```javascript
-new XmlBeautify({ parser: DOMParser })
+new BeautyHtml({parser: DOMParser})
 ```
 
 - Example for Node.js
 
 ```javascript
-const XmlBeautify = require('xml-beautify');
+const BeautyHtml = require('xml-beautify');
 const { DOMParser } = require('xmldom');// When used in a node.js environment, DOMParser is needed.
 const srcXmlText = `<?xml version="1.0" encoding="utf-8"?><example version="2.0">
   <head>
@@ -161,7 +163,7 @@ const srcXmlText = `<?xml version="1.0" encoding="utf-8"?><example version="2.0"
   </body>
 </example>`;
 
-const beautifiedXmlText = new XmlBeautify({ parser: DOMParser }).beautify(srcXmlText);
+const beautifiedXmlText = new BeautyHtml({ parser: DOMParser }).beautify(srcXmlText);
 console.log(beautifiedXmlText);
 
 ```

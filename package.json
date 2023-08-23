@@ -1,8 +1,8 @@
 {
-  "name": "xml-beautify",
-  "version": "1.2.3",
-  "description": "XML pretty formatter that corresponds to the self-closing empty elements.",
-  "main": "dist/XmlBeautify.js",
+  "name": "beauty-html",
+  "version": "1.3.0",
+  "description": "HTML and XML pretty formatter that corresponds to the self-closing empty elements.",
+  "main": "dist/BeautyHtml.js",
   "scripts": {
     "start": "webpack-dev-server",
     "build": "webpack --config webpack.config.js",
@@ -13,7 +13,7 @@
     "type": "git",
     "url": "git+https://github.com/riversun/xml-beautify.git"
   },
-  "author": "Tom Misawa <riversun.org@gmail.com> (https://github.com/riversun)",
+  "author": "ORIGINAL: Tom Misawa <riversun.org@gmail.com> (https://github.com/riversun). EDITED BY: Agente Secreto (https://github.com/Felipet007)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/riversun/xml-beautify/issues"

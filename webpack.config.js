@@ -18,7 +18,7 @@ module.exports = (env, argv) => {
     },
 
     entry: {
-      'XmlBeautify': [`./src/XmlBeautify.js`],
+      'BeautyHml': [`./src/BeautyHtml.js`],
     },
     output: {
       path: path.join(__dirname, 'dist'),
@@ -51,7 +51,7 @@ module.exports = (env, argv) => {
       alias: {}
     },
     plugins: [
-       new webpack.BannerPlugin(`[name] v${version} Copyright (c) 2019-2022 https://github.com/riversun(riversun.org@gmail.com)`),
+       new webpack.BannerPlugin(`[name] v${version} Copyright (c) 2019-2023 https://github.com/Felipet007(FelipLYLlopis@gmail.com) and https://github.com/riversun(riversun.org@gmail.com)`),
     ],
   };
 
