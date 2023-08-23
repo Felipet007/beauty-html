@@ -1,3 +1,2 @@
-var XmlBeautify = require('./src/XmlBeautify.js');
-
-module.exports = XmlBeautify;
+const BeautyHtml = require('./src/BeautyHtml.js');
+module.exports = BeautyHtml;
