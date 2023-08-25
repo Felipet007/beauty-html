@@ -11,14 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/riversun/xml-beautify.git"
+    "url": "git+https://github.com/Felipet007/beauty-html.git"
   },
   "author": "ORIGINAL: Tom Misawa <riversun.org@gmail.com> (https://github.com/riversun). EDITED BY: Agente Secreto (https://github.com/Felipet007)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/riversun/xml-beautify/issues"
+    "url": "https://github.com/Felipet007/beauty-html/issues"
   },
-  "homepage": "https://github.com/riversun/xml-beautify#readme",
+  "homepage": "https://github.com/Felipet007/beauty-html#readme",
   "devDependencies": {
     "@babel/core": "^7.17.9",
     "@babel/preset-env": "^7.16.11",
