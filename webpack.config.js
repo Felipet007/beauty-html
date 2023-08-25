@@ -18,13 +18,13 @@ module.exports = (env, argv) => {
     },
 
     entry: {
-      'BeautyHml': [`./src/BeautyHtml.js`],
+      'BeautyHtml': [`./src/BeautyHtml.js`],
     },
     output: {
       path: path.join(__dirname, 'dist'),
       publicPath: '/',
       filename: argv.mode === 'production' ? `[name].js` : `[name].js`,
-      library: 'XmlBeautify',
+      library: 'HtmlBeautify',
       libraryExport: 'default',
       libraryTarget: 'umd',
       globalObject: 'this',

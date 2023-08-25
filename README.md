@@ -83,14 +83,14 @@ npm install beauty-html
 
 # Demo
 ## demo on the web
-https://riversun.github.io/xml-beautify/index.html
+https://felipet007.github.io/beauty-html.html
 
 ## demo on node.js
 
 **clone this project and type**
 
 ```shell
-git clone https://github.com/Felipet007/xml-beautify.git
+git clone https://github.com/Felipet007/beauty-html.git
 npm start
 ```
 
@@ -145,7 +145,7 @@ new BeautyHtml({parser: DOMParser})
 - Example for Node.js
 
 ```javascript
-const BeautyHtml = require('xml-beautify');
+const BeautyHtml = require('beauty-html');
 const { DOMParser } = require('xmldom');// When used in a node.js environment, DOMParser is needed.
 const srcXmlText = `<?xml version="1.0" encoding="utf-8"?><example version="2.0">
   <head>
